@@ -9,13 +9,13 @@ urllib3.disable_warnings()
 
 def banner():
     stderr.writelines("""
-██╗   ██╗ █████╗       ██╗██████╗                        
-██║   ██║██╔══██╗      ██║██╔══██╗                       
-██║   ██║███████║█████╗██║██║  ██║                       
-██║   ██║██╔══██║╚════╝██║██║  ██║                       
-╚██████╔╝██║  ██║      ██║██████╔╝                       
- ╚═════╝ ╚═╝  ╚═╝      ╚═╝╚═════╝                        
-                                                         
+██╗   ██╗ █████╗       ██╗██████╗
+██║   ██║██╔══██╗      ██║██╔══██╗
+██║   ██║███████║█████╗██║██║  ██║
+██║   ██║██╔══██║╚════╝██║██║  ██║
+╚██████╔╝██║  ██║      ██║██████╔╝
+ ╚═════╝ ╚═╝  ╚═╝      ╚═╝╚═════╝
+
 ██████╗  ██████╗ ███╗   ███╗ █████╗ ██╗███╗   ██╗███████╗
 ██╔══██╗██╔═══██╗████╗ ████║██╔══██╗██║████╗  ██║██╔════╝
 ██║  ██║██║   ██║██╔████╔██║███████║██║██╔██╗ ██║███████╗
@@ -47,10 +47,10 @@ def get_googletagmanager(url):
     pattern2 = "GTM-[A-Z0-9]+"
     pattern3 = "UA-\d+-\d+"
     try:
-        response = requests.get(url, 
+        response = requests.get(url,
                     headers={
                         'User-agent': 'Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.86 Mobile Safari/537.36'
-                        }, 
+                        },
                     verify=False)
 
         if response.status_code == 200:
@@ -88,7 +88,7 @@ def get_domains_from_hackertarget(id):
     url = f"https://api.hackertarget.com/analyticslookup/?q={id}"
     try:
         response = requests.get(url)
-        if response.status_code == 200 and "API count exceeded" not in response.text: 
+        if response.status_code == 200 and "API count exceeded" not in response.text:
             return response.text.split("\n")
     except:
         pass
@@ -99,7 +99,7 @@ def get_domains(id):
     all_domains = all_domains.union(get_domains_from_builtwith(id))
     all_domains = all_domains.union(get_domains_from_hackertarget(id))
     return list(all_domains)
-    
+
 def show_data(data):
     all_uas = [] # avoid duplicates
     if data:
@@ -112,9 +112,8 @@ def show_data(data):
                 print(f">> {analytics_id}")
                 domains = get_domains(analytics_id)
                 if domains:
-                    for domain in get_domains(analytics_id):
+                    for domain in domains:
                         print(f"|__ {domain}")
-                    
                 else:
                     print("|__ NOT FOUND")
                 print("")
