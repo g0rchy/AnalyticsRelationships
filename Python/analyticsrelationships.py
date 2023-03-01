@@ -127,8 +127,9 @@ if __name__ == "__main__":
     parser.add_argument('-u','--url', help="URL to extract Google Analytics ID",required=True)
     args = parser.parse_args()
     url =  args.url
-    if not url.startswith("http"):
-        url = "https://" + url
+    if not args.url.startswith("http"):
+        stderr.writelines("the URL has to have a schema (e.g http[s]://)\n")
+        exit()
     stderr.writelines(f"[+] Analyzing url: {url}\n")
     tagmanager, data = get_googletagmanager(url)
     if tagmanager and data:
