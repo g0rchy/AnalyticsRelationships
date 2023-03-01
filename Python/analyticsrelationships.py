@@ -29,43 +29,38 @@ def banner():
 
 """)
 
-def get_UA(link):
-    pattern = "UA-\d+-\d+"
+def get_UA(gtm_tag):
+    pattern = r"UA-\d+-\d+"
     try:
-        u = urllib.request.urlopen(link)
+        u = urllib.request.urlopen(f"https://www.googletagmanager.com/gtm.js?id={gtm_tag}")
         data = u.read().decode(errors="ignore")
-        match = re.findall(pattern, data)
-        unique = set()
-        unique = unique.union(match)
-        return list(unique)
+        match = set(re.findall(pattern, data))
+        return list(match)
     except Exception as e:
         print(e)
         return None
 
 def get_googletagmanager(url):
-    pattern = "(www\.googletagmanager\.com/ns\.html\?id=[A-Z0-9\-]+)"
-    pattern2 = "GTM-[A-Z0-9]+"
-    pattern3 = "UA-\d+-\d+"
+    gtm_pattern = r"GTM-[A-Z0-9]+"
+    ua_pattern = r"UA-\d+-\d+"
+    googletagmanager_pattern = r"googletagmanager\.com/ns\.html[^>]+></iframe>|<!-- (?:End )?Google Tag Manager -->|googletagmanager\.com/gtm\.js"
+
     try:
-        response = requests.get(url,
+        text = requests.get(url,
                     headers={
                         'User-agent': 'Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.86 Mobile Safari/537.36'
                         },
-                    verify=False)
-
-        if response.status_code == 200:
-            text = response.text
-            match = re.findall(pattern, text)
-            if match:
-                return True, f"https://{match[0].replace('ns.html', 'gtm.js')}"
-            else:
-                match = re.findall(pattern2, text)
-                if match:
-                    return True, f"https://www.googletagmanager.com/gtm.js?id={match[0]}"
-                return False, re.findall(pattern3, text)
+                    verify=False).text
     except Exception as e:
         print(e)
-    return False, None
+
+    if text:
+        if re.findall(googletagmanager_pattern, text):
+            gtms = set(re.findall(gtm_pattern, text))
+            uas = set(re.findall(ua_pattern, text))
+            return True, list(uas), list(gtms)
+
+    return False, None, None
 
 def clean_relationships(domains):
     all_domains = []
@@ -100,44 +95,52 @@ def get_domains(id):
     all_domains = all_domains.union(get_domains_from_hackertarget(id))
     return list(all_domains)
 
-def show_data(data):
-    all_uas = [] # avoid duplicates
-    if data:
+def show_data(tag, tag_type):
         print("")
-        for u in data:
-            analytics_id = u.split('-')
+        if tag_type == "ua":
+            analytics_id = tag.split('-')
             analytics_id = "-".join(analytics_id[0:2])
-            if analytics_id not in all_uas:
-                all_uas.append(analytics_id)
-                print(f">> {analytics_id}")
-                domains = get_domains(analytics_id)
-                if domains:
-                    for domain in domains:
-                        print(f"|__ {domain}")
-                else:
-                    print("|__ NOT FOUND")
-                print("")
-        stderr.writelines("\n[+] Done! \n")
-    else:
-        stderr.writelines("[-] Analytics ID not found...\n")
-
+            print(f">> {analytics_id}")
+            domains = get_domains(analytics_id)
+            if domains:
+                for domain in domains:
+                    print(f"|__ {domain}")
+            else:
+                print("|__ NOT FOUND")
+            print("")
+        elif tag_type == "gtm":
+            print(f">> {tag}")
+            domains = get_domains(tag)
+            if domains:
+                for domain in domains:
+                    print(f"|__ {domain}")
+            else:
+                print("|__ NOT FOUND")
+            print("")
 if __name__ == "__main__":
     banner()
     parser = argparse.ArgumentParser()
     parser.add_argument('-u','--url', help="URL to extract Google Analytics ID",required=True)
     args = parser.parse_args()
-    url =  args.url
+    url = args.url
     if not args.url.startswith("http"):
-        stderr.writelines("the URL has to have a schema (e.g http[s]://)\n")
-        exit()
-    stderr.writelines(f"[+] Analyzing url: {url}\n")
-    tagmanager, data = get_googletagmanager(url)
-    if tagmanager and data:
-        stderr.writelines(f"[+] URL with UA: {data}\n")
-        stderr.writelines("[+] Obtaining information from builtwith and hackertarget\n")
-        uas = get_UA(data)
-        show_data(uas)
-    elif data:
-        show_data(data)
+        stderr.writelines("the URL has to have a schema (e.g http[s]://)")
+    stderr.writelines(f"[+] Analyzing url: {args.url}\n")
+    tagmanager, uas, gtms = get_googletagmanager(args.url)
+    if tagmanager:
+        if gtms:
+            stderr.writelines(f"[+] Found GTM(s): {' '.join(str(i) for i in gtms)}\n")
+            stderr.writelines("[+] Obtaining information from builtwith and hackertarget\n")
+            for gtm in gtms:
+                uas += get_UA(gtm)
+
+                show_data(gtm, "gtm")
+        if uas:
+            stderr.writelines(f"[+] Found UA(s): {' '.join(str(i) for i in uas)}\n")
+            stderr.writelines("[+] Obtaining information from builtwith and hackertarget\n")
+            for ua in uas:
+                show_data(ua, "ua")
+
+        stderr.writelines("[+] Done! \n")
     else:
-        stderr.writelines("[-] Tagmanager URL not fount\n")
+        stderr.writelines("[-] Google Tag Manager not detected\n")
